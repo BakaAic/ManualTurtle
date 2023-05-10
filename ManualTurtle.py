@@ -338,7 +338,6 @@ class DrawingBoard():
         if _pos[1]>295:
             _pos[1]=295
         _color=self.quickColorBoard.getColor(*_pos)
-        print(_pos,_color)
         self.quickcolor_pos=_pos
         self.indicatorSetting('quickcolor',_pos,self.reverseColor(_color))
         if not self.edit_flag:
