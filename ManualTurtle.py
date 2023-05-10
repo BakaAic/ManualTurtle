@@ -4,6 +4,8 @@ from tkinter.ttk import *
 from tkinter import filedialog,messagebox
 import math
 import os
+from PIL import Image,ImageDraw,ImageTk
+import threading
 
 class TurtleRecord():
     def __init__(self,turtle):
@@ -16,7 +18,6 @@ class TurtleRecord():
         if len(self.operationBuffer)!=0:
             self.operation.append(tuple(self.operationBuffer))
             self.operationBuffer.clear()
-            
     def addHeader(self):
         self.addOperation('import turtle')
         self.addOperation('turtle.setup(width=500,height=500)')
@@ -124,6 +125,8 @@ class DrawingBoard():
         self.record_fillColor='#000000'
         self.outline_choice=[255,255]
         self.fill_choice=[255,255]
+        self.quickcolor_pos=None
+        self.quickcolor_state=False
         self.edit_flag=0
         self.LineAssistOffset=9
         #====================Window====================
@@ -149,6 +152,7 @@ class DrawingBoard():
         self.painter.bind_all('<KeyPress>',self.PressCheck)
         self.painter.bind_all('<KeyRelease>',self.ReleaseCheck)
         self.colorMapping()
+        self.quickColorBoard=None
         #====================ToolButton====================
         self.Tool_line=Button(self.toolFrame,text='直线',width=25,command=lambda:self.ToolChoice(0))
         self.Tool_line.place(anchor=CENTER,relx=0.5,rely=0.08)
@@ -195,13 +199,54 @@ class DrawingBoard():
         self.Tool_lightPicker.bind('<B1-Motion>',self.lightPicker_ex)
         
         self.PickerFill(45)
+        self.loadQuickColorBoard()
+        self.toolBar.after(1,self.listenLoading_QuickColorBoard)
         
         self._pickerIndicator_light.create_line(130,2,130,10,fill='#CCCCCC',width=2)
         self._pickerIndicator_light.create_line(130,52,130,62,fill='#CCCCCC',width=2)
         self.indicatorSetting('color',255)
         self.indicatorSetting('light',255)
         
+        self.showReminder('快速调色板加载中,性能可能暂时受到影响...')
+        
         self.toolBar.mainloop()
+        
+    def loadQuickColorBoard(self):
+        _t=threading.Thread(target=self.loadQuickColorBoard_thread)
+        _t.start()
+        
+    def listenLoading_QuickColorBoard(self):
+        if self.quickColorBoard==None:
+            self.toolBar.after(1000,self.listenLoading_QuickColorBoard)
+            return 
+        else:
+            self.clearReminder()
+            self.showReminder('加载完成， ~ 键可以唤出')
+            self.toolBar.after(4000,self.clearReminder)
+            self.buildingQuickColorBoard()    
+            
+    def buildingQuickColorBoard(self):
+        self.quick=Toplevel(self.toolBar)
+        self.quick.overrideredirect(True)
+        self.quick.geometry(f'398x306+{self.toolBar.winfo_x()+283}+{self.toolBar.winfo_y()+225}')
+        self.quick.attributes('-topmost',True)
+        self.selectBoard=Canvas(self.quick,width=390,height=298)
+        self.selectBoard.place(anchor=CENTER,relx=0.5,rely=0.5)
+        self.selectBoard.create_image(2,2,anchor=NW,image=self.quickColorBoard.tkimg)
+        self.selectBoard.bind('<Button-1>',self.quickColorPicker)
+        self.selectBoard.bind('<B1-Motion>',self.quickColorPicker)
+        self.quick.withdraw()
+        
+    def loadQuickColorBoard_thread(self):
+        _tmp=QuickColor()
+        self.quickColorBoard=_tmp
+        
+    def callQuickBoard(self,event):
+        self.quick.deiconify()
+        self.quick.geometry(f'398x306+{self.toolBar.winfo_x()+283}+{self.toolBar.winfo_y()+225}')
+        
+    def hideQuickBoard(self,event):
+        self.quick.withdraw()
         
     def output(self):
         savepath=filedialog.asksaveasfilename(title='保存文件',filetypes=[('Python文件','.py')])
@@ -282,6 +327,29 @@ class DrawingBoard():
             _b=0
         return self.rgb(_r,_g,_b)
     
+    def quickColorPicker(self,event):
+        _pos=[event.x,event.y]
+        if _pos[0]<0:
+            _pos[0]=0
+        if _pos[0]>387:
+            _pos[0]=387
+        if _pos[1]<0:
+            _pos[1]=0
+        if _pos[1]>295:
+            _pos[1]=295
+        _color=self.quickColorBoard.getColor(*_pos)
+        print(_pos,_color)
+        self.quickcolor_pos=_pos
+        self.indicatorSetting('quickcolor',_pos,self.reverseColor(_color))
+        if not self.edit_flag:
+            self.outlineColor=self.rgb(*_color)
+            self.Tool_color_outline.config(bg=self.outlineColor)
+            self.Tool_color_outline_label.config(text='线条颜色：'+self.outlineColor)
+        else:    
+            self.fillColor=self.rgb(*_color)
+            self.Tool_color_fill.config(bg=self.fillColor)
+            self.Tool_color_fill_label.config(text='填充颜色：'+self.fillColor)
+    
     def colorPicker(self,event):
         value=event.x if event.x<256 else 255
         if value<0:
@@ -352,7 +420,9 @@ class DrawingBoard():
         _indicatorHigh=7+_offset
         _indicatorWidth=14
         _indicatorLine=1
-        value+=_offset
+        if Type!='quickcolor':
+            value+=_offset
+            
         if Type=='color':
             self._pickerIndicator_color.delete('indicator')
             
@@ -377,8 +447,18 @@ class DrawingBoard():
             self._pickerIndicator_light.create_line(value,64-_indicatorHigh,value-_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
             self._pickerIndicator_light.create_line(value,64-_indicatorHigh,value+_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
             self._pickerIndicator_light.create_line(value-_indicatorWidth//2,62,value+_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
+        elif Type=='quickcolor':
+            self.selectBoard.delete('indicator')
+            self.selectBoard.create_line(value[0]-15,value[1],value[0]+15,value[1],fill=color,width=_indicatorLine,tags='indicator')
+            self.selectBoard.create_line(value[0],value[1]-15,value[0],value[1]+15,fill=color,width=_indicatorLine,tags='indicator')
         else:
             assert False,'错误的输入'
+                    
+    def reverseColor(self,color):
+        _r=255-color[0]
+        _g=255-color[1]
+        _b=255-color[2]
+        return self.rgb(_r,_g,_b)
                     
     def rgb(self,red,green,blue):
         _rgbCode='#'+hex(red)[2:].upper().zfill(2)+hex(green)[2:].upper().zfill(2)+hex(blue)[2:].upper().zfill(2)
@@ -401,6 +481,8 @@ class DrawingBoard():
         pos_turtle=self.getTurtlePos()
         self.toolBar.geometry(f'275x500+{(pos_turtle[0]+500)}+{(pos_turtle[1]-30)}')
         self.painter.geometry(f'500x500+{pos_turtle[0]}+{pos_turtle[1]}')
+        if self.quickcolor_state:
+            self.quick.geometry(f'398x306+{self.toolBar.winfo_x()+283}+{self.toolBar.winfo_y()+225}')
         self.painter.focus_force()
         
     def PressCheck(self,event):
@@ -417,7 +499,12 @@ class DrawingBoard():
                 self.Tool_line.config(text='连续辅直')
             else:
                 self.Tool_line.config(text='连续直线')
-            
+                
+        if event.keycode in (229,183,192):
+            self.quickcolor_state=True
+            if self.quickColorBoard!=None:
+                self.callQuickBoard(event)
+                
     def ReleaseCheck(self,event):
         if event.keycode==16:
             self.shiftState=False
@@ -435,6 +522,10 @@ class DrawingBoard():
             self.tmpLinePoint=None
             self.paint.delete('spec_reminder')
             
+        if event.keycode==192:
+            self.quickcolor_state=False
+            if self.quickColorBoard!=None:
+                self.hideQuickBoard(event)
             
     def test(self,*event):
         self.colorConvert(self.outline_choice[0],self.outline_choice[1])
@@ -511,7 +602,9 @@ class DrawingBoard():
         return _calibration
     
     def penFunction_pencil(self):
-        baseUndoCount=3
+        if len(self.pencilPoint)==0:
+            return
+        baseUndoCount=3        
         _single=False
         if len(self.pencilPoint)==1:
             _single=True
@@ -621,6 +714,12 @@ class DrawingBoard():
         self.undoCount.append(baseUndoCount)
         self.record.fillOperation()
         
+    def showReminder(self,_text):
+        self.paint.create_text((250,490),text=_text,fill='#808080',tags='text_reminder')
+        
+    def clearReminder(self):
+        self.paint.delete('text_reminder')
+        
     def penMove(self,event):
         self.paint.delete('spec_reminder')
         if self.curTool==0:
@@ -720,5 +819,53 @@ class DrawingBoard():
         self.turtle.hideturtle()
         turtle.update()
 
+class QuickColor:
+    def __init__(self):
+        self.size=[388,256]
+        self.margin_high=20
+        self.size[1]+=self.margin_high*2
+        self.img=Image.new('RGB',self.size,color='white')
+        self.colorFill()
+        self.tkimg=ImageTk.PhotoImage(self.img)
+    def getColor(self,pos_x,pos_y):
+        return self.img.getpixel((pos_x,pos_y))    
+    
+    def colorFill(self):
+        _img=ImageDraw.Draw(self.img)
+        _img.rectangle((0,0,388,self.margin_high),fill='white')
+        _d=64
+        _colorDict=['(255,i,0)','(255-i,255,0)','(0,255,i)','(0,255-i,255)','(i,0,255)','(255,0,255-i)']
+        for h in range(0,513):
+            for i in range(0,256):
+                for j in range(6):
+                    color=eval(_colorDict[j])
+                    color=self.rgbGradient(*color,256-h)
+                    _img.point((i//4+_d*j,h//2+self.margin_high),fill=self.rgb(*color))
+                _color=(128,128,128)
+                _color=self.rgbGradient(*_color,256-h)
+                _img.line((384,h//2+self.margin_high,390,h//2+self.margin_high),fill=self.rgb(*_color))
+        _img.rectangle((0,self.size[1]-self.margin_high,388,self.size[1]),fill='black')        
+    def rgb(self,red,green,blue):
+        _rgbCode='#'+hex(red)[2:].upper().zfill(2)+hex(green)[2:].upper().zfill(2)+hex(blue)[2:].upper().zfill(2)
+        return _rgbCode
+    def rgbGradient(self,_r,_g,_b,change):
+        _r+=change
+        _g+=change
+        _b+=change
+        if _r<0:
+            _r=0
+        elif _r>255:
+            _r=255
+        if _g<0:
+            _g=0
+        elif _g>255:
+            _g=255
+        if _b<0:
+            _b=0
+        elif _b>255:    
+            _b=255
+        return _r,_g,_b
+    
+    
 if __name__=='__main__':
     paint=DrawingBoard()
