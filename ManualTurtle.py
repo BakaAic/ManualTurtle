@@ -122,8 +122,8 @@ class DrawingBoard():
         self.fillColor='#000000'
         self.record_outlineColor='#000000'
         self.record_fillColor='#000000'
-        self.outline_choice=[0,255]
-        self.fill_choice=[0,255]
+        self.outline_choice=[255,255]
+        self.fill_choice=[255,255]
         self.edit_flag=0
         self.LineAssistOffset=9
         #====================Window====================
@@ -198,7 +198,7 @@ class DrawingBoard():
         
         self._pickerIndicator_light.create_line(130,2,130,10,fill='#CCCCCC',width=2)
         self._pickerIndicator_light.create_line(130,52,130,62,fill='#CCCCCC',width=2)
-        self.indicatorSetting('color',0)
+        self.indicatorSetting('color',255)
         self.indicatorSetting('light',255)
         
         self.toolBar.mainloop()
@@ -229,7 +229,6 @@ class DrawingBoard():
             return False
         else:
             return True
-            
         
     def editorChoice_out(self,event):
         self.editorChoice(0)
@@ -259,6 +258,7 @@ class DrawingBoard():
         self.mapping.extend([(0,255-i,255) for i in range(0,256,6)])
         self.mapping.extend([(i,0,255) for i in range(0,256,6)])
         self.mapping.extend([(255,0,255-i) for i in range(0,256,6)])
+        self.mapping[-3:]=[(128,128,128),(128,128,128),(128,128,128)]
         
     def colorConvert(self,color,light):
         _r,_g,_b=self.mapping[color]
@@ -344,6 +344,7 @@ class DrawingBoard():
             for j in range(6):
                 self.Tool_colorPicker.create_line(i//6+_d*j,0,i//6+_d*j,high,fill=self.rgb(*eval(_colorDict[j])))
             self.Tool_lightPicker.create_line(i+2,0,i+2,high,fill=self.rgb(255-i,255-i,255-i))
+        self.Tool_colorPicker.create_line(257,0,257,high,fill='#808080')
     
     def indicatorSetting(self,Type,value,color='#000000'):
         #value:0-255
@@ -379,10 +380,7 @@ class DrawingBoard():
         else:
             assert False,'错误的输入'
                     
-        
-    
     def rgb(self,red,green,blue):
-        #颜色转换
         _rgbCode='#'+hex(red)[2:].upper().zfill(2)+hex(green)[2:].upper().zfill(2)+hex(blue)[2:].upper().zfill(2)
         return _rgbCode
     
@@ -484,8 +482,8 @@ class DrawingBoard():
         elif self.curTool==2:
             self.penFunction_rect(_posTurtle_start,_posTurtle_stop)
         elif self.curTool==3:
-            self.penFunction_circle(_posTurtle_start,_posTurtle_stop)
-        
+            self.penFunction_circle(_posTurtle_start,_posTurtle_stop)    
+        turtle.update()
         
     def penFunction_Line(self,startPos,stopPos):
         _calibration=None
@@ -685,7 +683,6 @@ class DrawingBoard():
                         _posReminder_stop[1]=_posReminder_start[1]+_distance_x
                         
             self.paint.create_oval((_posReminder_start[0],_posReminder_start[1],_posReminder_stop[0],_posReminder_stop[1]),outline='red',tags='reminder')
-            
     
     def getTurtlePos(self):
         return self.screen.cv.winfo_rootx(),self.screen.cv.winfo_rooty()
@@ -710,6 +707,7 @@ class DrawingBoard():
         self.turtle=turtle.Turtle()
         turtle.setup(width=500,height=500)
         turtle.title('Painting')
+        turtle.tracer(False)
         self.screen=turtle.Screen()
         self.screen.cv._rootwindow.attributes('-topmost',False)
         self.screen.cv._rootwindow.resizable(False,False)
@@ -719,9 +717,8 @@ class DrawingBoard():
         self.screen.cv.bind_all('<Motion>',self.penMove)
         self.screen.cv.bind_all('<ButtonRelease-1>',self.penRelease)
         self.screen.cv.bind_all('<Control-z>',self.shortcut)
-        self.turtle.speed(0)
         self.turtle.hideturtle()
-        
+        turtle.update()
 
 if __name__=='__main__':
-    test=DrawingBoard()
+    paint=DrawingBoard()
