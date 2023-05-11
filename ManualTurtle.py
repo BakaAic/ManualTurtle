@@ -7,6 +7,7 @@ import os
 from PIL import Image,ImageDraw,ImageTk
 import threading
 
+version='v1.0.3'
 class TurtleRecord():
     def __init__(self,turtle):
         self.turtle=turtle
@@ -204,8 +205,8 @@ class DrawingBoard():
         
         self._pickerIndicator_light.create_line(130,2,130,10,fill='#CCCCCC',width=2)
         self._pickerIndicator_light.create_line(130,52,130,62,fill='#CCCCCC',width=2)
-        self.indicatorSetting('color',255)
-        self.indicatorSetting('light',255)
+        self.indicatorSetting('color',255,'#000000')
+        self.indicatorSetting('light',255,255)
         
         self.showReminder('快速调色板加载中,性能可能暂时受到影响...')
         
@@ -286,13 +287,13 @@ class DrawingBoard():
         if self.edit_flag==0:
             self._choiceIndicator_outline.config(bg='#FFAA00')
             self._choiceIndicator_fill.config(bg='#F0F0F0')
-            self.indicatorSetting('color',self.outline_choice[0])
-            self.indicatorSetting('light',self.outline_choice[1])
+            self.indicatorSetting('color',self.outline_choice[0],self.rgb(*self.mapping[self.outline_choice[0]]))
+            self.indicatorSetting('light',self.outline_choice[1],self.outline_choice[1])
         elif self.edit_flag==1:
             self._choiceIndicator_outline.config(bg='#F0F0F0')
             self._choiceIndicator_fill.config(bg='#FFAA00')
-            self.indicatorSetting('color',self.fill_choice[0])
-            self.indicatorSetting('light',self.fill_choice[1])
+            self.indicatorSetting('color',self.fill_choice[0],self.rgb(*self.mapping[self.fill_choice[1]]))
+            self.indicatorSetting('light',self.fill_choice[1],self.fill_choice[1])
         else:
             assert False,'错误的输入'
     
@@ -353,33 +354,35 @@ class DrawingBoard():
         value=event.x if event.x<256 else 255
         if value<0:
             value=0
-        self.indicatorSetting('color',value)
         if not self.edit_flag:
             self.outline_choice[0]=value
             self.outlineColor=self.colorConvert(self.outline_choice[0],self.outline_choice[1])
             self.Tool_color_outline.config(bg=self.outlineColor)
             self.Tool_color_outline_label.config(text='线条颜色：'+self.outlineColor)
+            self.indicatorSetting('color',value,self.rgb(*self.mapping[self.outline_choice[0]]))
         else:    
             self.fill_choice[0]=value
             self.fillColor=self.colorConvert(self.fill_choice[0],self.fill_choice[1])
             self.Tool_color_fill.config(bg=self.fillColor)
             self.Tool_color_fill_label.config(text='填充颜色：'+self.fillColor)
+            self.indicatorSetting('color',value,self.rgb(*self.mapping[self.outline_choice[1]]))
         
     def lightPicker(self,event):
         value=event.x if event.x<256 else 255
         if value<0:
             value=0
-        self.indicatorSetting('light',value)
         if not self.edit_flag:
             self.outline_choice[1]=value
             self.outlineColor=self.colorConvert(self.outline_choice[0],self.outline_choice[1])
             self.Tool_color_outline.config(bg=self.outlineColor)
             self.Tool_color_outline_label.config(text='线条颜色：'+self.outlineColor)
+            self.indicatorSetting('light',value,self.outline_choice[1])
         else:    
             self.fill_choice[1]=value
             self.fillColor=self.colorConvert(self.fill_choice[0],self.fill_choice[1])
             self.Tool_color_fill.config(bg=self.fillColor)
             self.Tool_color_fill_label.config(text='填充颜色：'+self.fillColor)
+            self.indicatorSetting('light',value,self.fill_choice[1])
     
     def lightPicker_ex(self,event):
         sorption=8
@@ -392,17 +395,18 @@ class DrawingBoard():
             value=0
         if abs(value-255)<=sorption//2:
             value=255
-        self.indicatorSetting('light',value)
         if not self.edit_flag:
             self.outline_choice[1]=value
             self.outlineColor=self.colorConvert(self.outline_choice[0],self.outline_choice[1])
             self.Tool_color_outline.config(bg=self.outlineColor)
             self.Tool_color_outline_label.config(text='线条颜色：'+self.outlineColor)
+            self.indicatorSetting('light',value,self.outline_choice[1])
         else:    
             self.fill_choice[1]=value
             self.fillColor=self.colorConvert(self.fill_choice[0],self.fill_choice[1])
             self.Tool_color_fill.config(bg=self.fillColor)
             self.Tool_color_fill_label.config(text='填充颜色：'+self.fillColor)
+            self.indicatorSetting('light',value,self.fill_choice[1])
     
     def PickerFill(self,high):
         _d=43
@@ -419,6 +423,7 @@ class DrawingBoard():
         _indicatorHigh=7+_offset
         _indicatorWidth=14
         _indicatorLine=1
+        _color='#000000'
         if Type!='quickcolor':
             value+=_offset
             
@@ -426,26 +431,26 @@ class DrawingBoard():
             self._pickerIndicator_color.delete('indicator')
             
             self.Tool_colorPicker.delete('indicator')
-            self.Tool_colorPicker.create_line(value,0,value,66,fill='#000000',width=2,tags='indicator')
+            self.Tool_colorPicker.create_line(value,0,value,66,fill=self.reverseColor(color),width=2,tags='indicator')
             
-            self._pickerIndicator_color.create_line(value,_indicatorHigh,value-_indicatorWidth//2,_offset,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_color.create_line(value,_indicatorHigh,value+_indicatorWidth//2,_offset,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_color.create_line(value-_indicatorWidth//2,_offset,value+_indicatorWidth//2,_offset,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_color.create_line(value,64-_indicatorHigh,value-_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_color.create_line(value,64-_indicatorHigh,value+_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_color.create_line(value-_indicatorWidth//2,62,value+_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_color.create_line(value,_indicatorHigh,value-_indicatorWidth//2,_offset,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_color.create_line(value,_indicatorHigh,value+_indicatorWidth//2,_offset,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_color.create_line(value-_indicatorWidth//2,_offset,value+_indicatorWidth//2,_offset,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_color.create_line(value,64-_indicatorHigh,value-_indicatorWidth//2,62,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_color.create_line(value,64-_indicatorHigh,value+_indicatorWidth//2,62,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_color.create_line(value-_indicatorWidth//2,62,value+_indicatorWidth//2,62,fill=_color,width=_indicatorLine,tags='indicator')
         elif Type=='light':
             self._pickerIndicator_light.delete('indicator')
             
             self.Tool_lightPicker.delete('indicator')
-            self.Tool_lightPicker.create_line(value,0,value,66,fill='#FF0000',width=2,tags='indicator')
-            
-            self._pickerIndicator_light.create_line(value,_indicatorHigh,value-_indicatorWidth//2,_offset,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_light.create_line(value,_indicatorHigh,value+_indicatorWidth//2,_offset,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_light.create_line(value-_indicatorWidth//2,_offset,value+_indicatorWidth//2,_offset,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_light.create_line(value,64-_indicatorHigh,value-_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_light.create_line(value,64-_indicatorHigh,value+_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
-            self._pickerIndicator_light.create_line(value-_indicatorWidth//2,62,value+_indicatorWidth//2,62,fill=color,width=_indicatorLine,tags='indicator')
+            self.Tool_lightPicker.create_line(value,0,value,66,fill=self.reverseColor_light(color),width=2,tags='indicator')
+
+            self._pickerIndicator_light.create_line(value,_indicatorHigh,value-_indicatorWidth//2,_offset,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_light.create_line(value,_indicatorHigh,value+_indicatorWidth//2,_offset,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_light.create_line(value-_indicatorWidth//2,_offset,value+_indicatorWidth//2,_offset,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_light.create_line(value,64-_indicatorHigh,value-_indicatorWidth//2,62,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_light.create_line(value,64-_indicatorHigh,value+_indicatorWidth//2,62,fill=_color,width=_indicatorLine,tags='indicator')
+            self._pickerIndicator_light.create_line(value-_indicatorWidth//2,62,value+_indicatorWidth//2,62,fill=_color,width=_indicatorLine,tags='indicator')
         elif Type=='quickcolor':
             self.selectBoard.delete('indicator')
             self.selectBoard.create_line(value[0]-15,value[1],value[0]+15,value[1],fill=color,width=_indicatorLine,tags='indicator')
@@ -454,11 +459,25 @@ class DrawingBoard():
             assert False,'错误的输入'
                     
     def reverseColor(self,color):
+        if type(color)==str:
+            color=color[1:]
+            color=[int(color[i:i+2],16) for i in range(0,6,2)]
         _r=255-color[0]
         _g=255-color[1]
         _b=255-color[2]
         return self.rgb(_r,_g,_b)
-                    
+    
+    def reverseColor_light(self,color):
+        if color>=128:
+            _rgb=(128-color)+256
+        else:
+            _rgb=128-color
+        if _rgb>255:
+            _rgb=255
+        elif _rgb<0:
+            _rgb=0
+        return self.rgb(_rgb,_rgb,_rgb)
+        
     def rgb(self,red,green,blue):
         _rgbCode='#'+hex(red)[2:].upper().zfill(2)+hex(green)[2:].upper().zfill(2)+hex(blue)[2:].upper().zfill(2)
         return _rgbCode
@@ -864,7 +883,6 @@ class QuickColor:
         elif _b>255:    
             _b=255
         return _r,_g,_b
-    
     
 if __name__=='__main__':
     paint=DrawingBoard()
